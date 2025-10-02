@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: detection-uniformes
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    disk:
+      name: uniformes-data
+      mountPath: /data
+      sizeGB: 1

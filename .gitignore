@@ -1,0 +1,19 @@
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.log
+*.tmp
+
+# VS Code
+.vscode/
+
+# Node.js (si usas npm)
+node_modules/
+dist/
+
+credentials/
+*.json
+*.pickle
+.env

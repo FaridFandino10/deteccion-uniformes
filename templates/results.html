@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Detección</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+            animation: slideIn 0.5s ease-out;
+            border-top: 5px solid #dc143c;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-icon {
+            text-align: center;
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: checkmark 0.8s ease-out;
+        }
+
+        @keyframes checkmark {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            color: #1a1a1a;
+            font-size: 24px;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .percentage-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .percentage-circle.high {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        }
+
+        .percentage-circle.medium {
+            background: linear-gradient(135deg, #dc143c 0%, #b81034 100%);
+        }
+
+        .percentage-circle.low {
+            background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%);
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #dc143c;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .info-value {
+            color: #1a1a1a;
+            font-size: 16px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .elements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .element-badge {
+            background: #1a1a1a;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .element-badge.missing {
+            background: #dc143c;
+            color: white;
+        }
+
+        .timestamp {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #dc143c 0%, #b81034 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(220, 20, 60, 0.4);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .percentage-circle {
+                width: 120px;
+                height: 120px;
+                font-size: 28px;
+            }
+
+            .elements-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        
+        <div class="header">
+            <h1>Resultados de la detección</h1>
+        </div>
+
+        {% set porcentaje_num = porcentaje | float %}
+        {% if porcentaje_num >= 75 %}
+            <div class="percentage-circle high">{{ porcentaje }}%</div>
+        {% elif porcentaje_num >= 50 %}
+            <div class="percentage-circle medium">{{ porcentaje }}%</div>
+        {% else %}
+            <div class="percentage-circle low">{{ porcentaje }}%</div>
+        {% endif %}
+
+        <div class="info-card">
+            <div class="info-label">Aliado</div>
+            <div class="info-value">{{ aliado }}</div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-label">Nombre del técnico</div>
+            <div class="info-value">{{ nombre }}</div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-label">Porcentaje de uniforme</div>
+            <div class="info-value">{{ porcentaje }}%</div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-label">Elementos detectados</div>
+            <div class="info-value">
+                {% if detectados == 'Ninguno' %}
+                    Ninguno
+                {% else %}
+                    <div class="elements-grid">
+                        {% for elemento in detectados.split(', ') %}
+                            <div class="element-badge">✓ {{ elemento }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-label">Elementos faltantes</div>
+            <div class="info-value">
+                {% if faltantes == 'Ninguno' %}
+                    ¡Completo!
+                {% else %}
+                    <div class="elements-grid">
+                        {% for elemento in faltantes.split(', ') %}
+                            <div class="element-badge missing">✗ {{ elemento }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="timestamp" style="color:#000000;"> 
+            Fecha: {{ fecha }}
+        </div>
+
+        <a href="/" class="btn btn-primary">Subir otra foto</a>
+    </div>
+</body>
+</html>

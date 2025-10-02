@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detección de Uniforme</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #fff 0%, #eee 100%);
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+        .card {
+            border: 2px solid #212121;
+            background-color: #f8f9fa;
+            transition: box-shadow 0.3s;
+        }
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(33,33,33,0.2);
+        }
+        .card-body {
+            background-color: #fff;
+        }
+        h2 {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        label {
+            color: #212121;
+        }
+        .btn-primary {
+            background-color: #212121;
+            border-color: #d32f2f;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background-color: #d32f2f;
+            border-color: #212121;
+            color: #fff;
+        }
+        .btn-dark {
+            background-color: #212121;
+            border-color: #212121;
+        }
+        .btn-dark:hover {
+            background-color: #d32f2f;
+            border-color: #d32f2f;
+        }
+        .btn-outline-secondary {
+            border-color: #212121;
+            color: #212121;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #212121;
+            color: #fff;
+        }
+        .form-control:focus {
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 0.2rem rgba(211,47,47,.25);
+        }
+        .alert-danger {
+            background-color: #d32f2f;
+            color: #fff;
+            border-color: #212121;
+        }
+        #video {
+            width: 100%;
+            max-height: 300px;
+            border: 2px solid #212121;
+            border-radius: 4px;
+            background: #000;
+        }
+        #preview {
+            display: none;
+            max-height: 250px;
+            margin-top: 10px;
+            border: 2px solid #d32f2f;
+        }
+        .camera-container {
+            position: relative;
+        }
+        #no-camera-msg {
+            display: none;
+            color: #d32f2f;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <div class="text-center mb-4">
+        <!-- <img src="/static/logo.png" alt="Logo" style="max-width: 120px;"> -->
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow-lg">
+                <div class="card-body">
+                    <h2 class="mb-4 text-center">Subir fotos para detección de uniforme</h2>
+                    {% if error %}
+                      <div class="alert alert-danger">{{ error }}</div>
+                    {% endif %}
+                    <form method="post" action="/detect" enctype="multipart/form-data" class="card p-4 shadow-sm" id="detectionForm">
+                        <div class="mb-3">
+                            <label for="aliado" class="form-label">Aliado <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="aliado" name="aliado" required maxlength="100">
+                            <small class="form-text text-muted">Nombre de la empresa o aliado.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nombre_tecnico" class="form-label">Nombre del técnico <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nombre_tecnico" name="nombre_tecnico" required maxlength="100">
+                            <small class="form-text text-muted">Escribe tu nombre completo.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="uniforme" class="form-label">Foto del uniforme <span class="text-danger">*</span></label>
+                            
+                            <div class="camera-container">
+                                <video id="video" autoplay playsinline></video>
+                                <canvas id="canvas" style="display:none;"></canvas>
+                                <div id="no-camera-msg">No se pudo acceder a la cámara. Usa el selector de archivos.</div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-dark mt-2 w-100" id="capture">📷 Capturar foto</button>
+                            
+                            <div class="text-center my-2">--- o ---</div>
+                            
+                            <input type="file" class="form-control" name="uniforme" id="uniforme" accept="image/*" capture="environment" required>
+                            
+                            <div id="foto-lista" class="alert alert-success mt-2" style="display:none;">✅ Foto capturada y lista para enviar</div>
+                            <img id="preview" class="img-thumbnail" alt="Previsualización">
+                            <small class="form-text text-muted">Toma una foto con la cámara o selecciona una imagen.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" id="btn-detectar">
+                            Detectar
+                            <span id="spinner" class="spinner-border spinner-border-sm ms-2" style="display:none;"></span>
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary w-100 mt-2">Limpiar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const uniformeInput = document.getElementById('uniforme');
+const fotoLista = document.getElementById('foto-lista');
+const captureBtn = document.getElementById('capture');
+const preview = document.getElementById('preview');
+const btnDetectar = document.getElementById('btn-detectar');
+const spinner = document.getElementById('spinner');
+const noCameraMsg = document.getElementById('no-camera-msg');
+const detectionForm = document.getElementById('detectionForm');
+
+let stream = null;
+let cameraAvailable = false;
+
+// Intentar acceder a la cámara trasera
+async function initCamera() {
+    try {
+        // Intentar cámara trasera primero
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            } 
+        });
+        video.srcObject = stream;
+        cameraAvailable = true;
+        video.style.display = 'block';
+        captureBtn.style.display = 'block';
+        noCameraMsg.style.display = 'none';
+    } catch (error) {
+        console.warn('No se pudo acceder a la cámara:', error);
+        // Si falla cámara trasera, intentar cualquier cámara
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            cameraAvailable = true;
+            video.style.display = 'block';
+            captureBtn.style.display = 'block';
+            noCameraMsg.style.display = 'none';
+        } catch (err) {
+            // Sin cámara disponible
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            noCameraMsg.style.display = 'block';
+        }
+    }
+}
+
+// Iniciar cámara al cargar
+initCamera();
+
+// Capturar foto
+captureBtn.addEventListener('click', () => {
+    if (!cameraAvailable) {
+        alert('Cámara no disponible. Usa el selector de archivos.');
+        return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convertir a blob y crear archivo
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            alert('Error al capturar imagen');
+            return;
+        }
+
+        const file = new File([blob], `captura_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        
+        // Crear DataTransfer para asignar al input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        uniformeInput.files = dataTransfer.files;
+        
+        // Mostrar preview
+        const url = URL.createObjectURL(blob);
+        preview.src = url;
+        preview.style.display = 'block';
+        fotoLista.style.display = 'block';
+        
+        // Remover required del input ya que tiene archivo
+        uniformeInput.removeAttribute('required');
+    }, 'image/jpeg', 0.9);
+});
+
+// Preview al seleccionar archivo manualmente
+uniformeInput.addEventListener('change', function(e) {
+    if (this.files && this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            preview.src = ev.target.result;
+            preview.style.display = 'block';
+            fotoLista.style.display = 'none';
+        }
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+
+// Spinner al enviar
+detectionForm.addEventListener('submit', function(e) {
+    // Verificar que hay archivo
+    if (!uniformeInput.files || uniformeInput.files.length === 0) {
+        e.preventDefault();
+        alert('Debes capturar o seleccionar una foto');
+        return false;
+    }
+    
+    spinner.style.display = 'inline-block';
+    btnDetectar.disabled = true;
+});
+
+// Limpiar al resetear
+detectionForm.addEventListener('reset', function() {
+    preview.style.display = 'none';
+    fotoLista.style.display = 'none';
+    uniformeInput.setAttribute('required', 'required');
+});
+
+// Detener cámara al salir
+window.addEventListener('beforeunload', () => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+</script>
+</body>
+</html>
