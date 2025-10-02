@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Sistema de Detección de Uniforme de Técnicos - UTILS
-VERSIÓN FINAL CORREGIDA
+====================================================
+
+Archivo de utilidades con integración a Google Sheets usando Service Account
 """
 
 import cv2
@@ -10,7 +12,15 @@ import pandas as pd
 from datetime import datetime
 import json
 from pathlib import Path
-import shutil
+
+# Importaciones para Google Sheets con Service Account
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    GOOGLE_SHEETS_AVAILABLE = True
+except ImportError:
+    GOOGLE_SHEETS_AVAILABLE = False
+    print("Google Sheets no disponible. Instala: pip install google-auth google-api-python-client")
 
 # Importaciones para Roboflow
 try:
@@ -18,7 +28,7 @@ try:
     ROBOFLOW_AVAILABLE = True
 except ImportError:
     ROBOFLOW_AVAILABLE = False
-    print("⚠️ Roboflow no disponible. Instala: pip install roboflow")
+    print("Roboflow no disponible. Instala: pip install roboflow")
 
 # Importaciones para OCR
 try:
@@ -27,12 +37,12 @@ try:
     TESSERACT_AVAILABLE = True
 except ImportError:
     TESSERACT_AVAILABLE = False
-    print("⚠️ Tesseract no disponible. Instala: pip install pytesseract pillow")
+    print("Tesseract no disponible. Instala: pip install pytesseract pillow")
 
 
 class UniformDetector:
     """
-    Clase principal para la detección de uniformes y identificación de técnicos
+    Clase principal para la detección de uniformes con integración a Google Sheets
     """
     
     def __init__(self, config_file="config.json"):
@@ -48,22 +58,14 @@ class UniformDetector:
             "botas", "gafas", "guantes", "casco", 
             "camisa", "polo", "pantalon", "carnet"
         ]
-        
-        # Verificar si /data existe (Render con disco) o usar raíz
-        if os.path.exists("/data") and os.access("/data", os.W_OK):
-            self.results_file = "/data/resultados_uniformes.xlsx"
-            print("✅ Usando disco persistente en /data")
-        else:
-            self.results_file = "resultados_uniformes.xlsx"
-            print("⚠️ Usando directorio raíz (sin persistencia)")
-        
+        self.results_file = "resultados_uniformes.xlsx"
         self.setup_directories()
         
         # Cargar modelo si Roboflow está disponible
         if ROBOFLOW_AVAILABLE:
             self.load_model()
         else:
-            print("⚠️ Roboflow no disponible. El modelo no se cargará.")
+            print("Roboflow no disponible. El modelo no se cargará.")
         
     def load_config(self, config_file):
         """Carga la configuración desde un archivo JSON"""
@@ -81,6 +83,11 @@ class UniformDetector:
             "detection": {
                 "confidence_threshold": 0.5,
                 "nms_threshold": 0.4
+            },
+            "google_sheets": {
+                "spreadsheet_id": "1F0XQM8Q9kn6uXs0KGgRETi_33iyQobGYPkHorav5ehw",
+                "sheet_name": "Registros",
+                "service_account_file": "credentials/service-account.json"
             }
         }
         
@@ -95,34 +102,24 @@ class UniformDetector:
                     merged_config[key] = value
             return merged_config
         except FileNotFoundError:
-            print(f"⚠️ Config no encontrado. Creando {config_file}...")
+            print(f"Config no encontrado. Creando {config_file}...")
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump(default_config, f, indent=4, ensure_ascii=False)
             return default_config
         except json.JSONDecodeError as e:
-            print(f"⚠️ Error en JSON: {e}. Usando config por defecto...")
+            print(f"Error en JSON: {e}. Usando config por defecto...")
             return default_config
     
     def setup_directories(self):
         """Crea los directorios necesarios para el proyecto"""
-        directories = ["images", "results", "models"]
+        directories = ["images", "results", "models", "credentials"]
         for directory in directories:
-            try:
-                Path(directory).mkdir(exist_ok=True)
-            except Exception as e:
-                print(f"⚠️ No se pudo crear directorio {directory}: {e}")
-        
-        # Intentar crear /data si no existe
-        if not os.path.exists("/data"):
-            try:
-                Path("/data").mkdir(exist_ok=True)
-            except:  # noqa: E722
-                pass
+            Path(directory).mkdir(exist_ok=True)
     
     def load_model(self):
         """Carga el modelo YOLOv11 desde Roboflow"""
         if not ROBOFLOW_AVAILABLE:
-            print("❌ Roboflow no instalado")
+            print("Roboflow no instalado")
             return False
             
         try:
@@ -131,10 +128,10 @@ class UniformDetector:
                 self.config["roboflow"]["project"]
             )
             self.model = project.version(self.config["roboflow"]["version"]).model
-            print("✅ Modelo YOLOv11 cargado desde Roboflow")
+            print("Modelo YOLOv11 cargado desde Roboflow")
             return True
         except Exception as e:
-            print(f"❌ Error al cargar modelo: {e}")
+            print(f"Error al cargar modelo: {e}")
             return False
     
     def detect_uniform_elements(self, image_path):
@@ -146,7 +143,7 @@ class UniformDetector:
             raise ValueError("Formato no válido. Use JPG, JPEG, PNG o BMP.")
 
         if self.model is None:
-            print("❌ Modelo no disponible")
+            print("Modelo no disponible")
             return {'detected_elements': [], 'carnet_box': None, 'total_detections': 0}
 
         image = cv2.imread(image_path)
@@ -192,7 +189,7 @@ class UniformDetector:
             }
             
         except Exception as e:
-            print(f"❌ Error en detección: {e}")
+            print(f"Error en detección: {e}")
             return {'detected_elements': [], 'carnet_box': None, 'total_detections': 0}
     
     def calculate_compliance(self, detected_elements):
@@ -211,30 +208,99 @@ class UniformDetector:
         
         return porcentaje, elementos_encontrados, elementos_faltantes
     
-    def _crear_excel_inicial(self, filename):
-        """Crea un archivo Excel con la estructura inicial"""
-        df_inicial = pd.DataFrame(columns=[
-            "Fecha", "Aliado", "Nombre", 
-            "Tiene del uniforme", "Le falta tener", "Porcentaje"
-        ])
+    def get_google_sheets_service(self):
+        """Obtiene el servicio de Google Sheets usando Service Account"""
+        if not GOOGLE_SHEETS_AVAILABLE:
+            print("Google Sheets API no disponible")
+            return None
+        
         try:
-            df_inicial.to_excel(filename, index=False, engine='openpyxl')
-            print(f"📄 Archivo Excel inicial creado: {filename}")
-            return True
+            # Intentar leer desde variable de entorno primero (para Render)
+            service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT')
+            
+            if service_account_json:
+                print("Usando credenciales desde variable de entorno")
+                import json
+                service_account_info = json.loads(service_account_json)
+                credentials = service_account.Credentials.from_service_account_info(
+                    service_account_info, 
+                    scopes=['https://www.googleapis.com/auth/spreadsheets']
+                )
+            else:
+                # Si no hay variable de entorno, usar archivo local
+                print("Usando credenciales desde archivo local")
+                service_account_file = self.config["google_sheets"]["service_account_file"]
+                
+                if not os.path.exists(service_account_file):
+                    print(f"Archivo de service account no encontrado: {service_account_file}")
+                    return None
+                
+                credentials = service_account.Credentials.from_service_account_file(
+                    service_account_file, 
+                    scopes=['https://www.googleapis.com/auth/spreadsheets']
+                )
+            
+            service = build('sheets', 'v4', credentials=credentials)
+            return service
+            
         except Exception as e:
-            print(f"❌ Error creando Excel inicial: {e}")
+            print(f"Error creando servicio de Google Sheets: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def save_to_google_sheets(self, nombre, elementos_encontrados, elementos_faltantes, 
+                              porcentaje, timestamp, aliado):
+        """Guarda los resultados en Google Sheets usando Service Account"""
+        if not GOOGLE_SHEETS_AVAILABLE:
+            print("Google Sheets no disponible")
+            return False
+        
+        try:
+            service = self.get_google_sheets_service()
+            if not service:
+                print("No se pudo obtener servicio de Google Sheets")
+                return False
+            
+            spreadsheet_id = self.config["google_sheets"]["spreadsheet_id"]
+            sheet_name = self.config["google_sheets"]["sheet_name"]
+            
+            # Preparar datos
+            values = [[
+                timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                str(aliado),
+                str(nombre),
+                ", ".join(elementos_encontrados) if elementos_encontrados else "Ninguno",
+                ", ".join(elementos_faltantes) if elementos_faltantes else "Completo",
+                f"{porcentaje:.1f}%"
+            ]]
+            
+            body = {'values': values}
+            
+            # Agregar datos
+            result = service.spreadsheets().values().append(
+                spreadsheetId=spreadsheet_id,
+                range=f"{sheet_name}!A:F",
+                valueInputOption='RAW',
+                insertDataOption='INSERT_ROWS',
+                body=body
+            ).execute()
+            
+            print(f"Datos guardados en Google Sheets: {result.get('updates').get('updatedCells')} celdas")
+            return True
+            
+        except Exception as e:
+            print(f"Error guardando en Google Sheets: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def save_to_excel(self, nombre, elementos_encontrados, elementos_faltantes, 
                       porcentaje, timestamp, aliado="Sin especificar"):
-        """
-        Guarda los resultados en archivo Excel consolidado
-        VERSIÓN FINAL - Compatible con y sin disco persistente
-        """
-        filename = self.results_file
+        """Guarda los resultados en Excel local (respaldo)"""
+        filename = "resultados_uniformes.xlsx"
         
         try:
-            # Crear el nuevo registro
             nuevo_registro = pd.DataFrame([{
                 "Fecha": timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                 "Aliado": str(aliado),
@@ -244,57 +310,26 @@ class UniformDetector:
                 "Porcentaje": f"{porcentaje:.1f}%"
             }])
             
-            # Si el archivo no existe, crearlo
-            if not os.path.exists(filename):
-                # Buscar archivo en raíz del repo
-                repo_file = "resultados_uniformes.xlsx"
-                if os.path.exists(repo_file) and filename != repo_file:
-                    try:
-                        shutil.copy(repo_file, filename)
-                        print(f"📋 Archivo copiado de repo a {filename}")
-                    except Exception as e:
-                        print(f"⚠️ No se pudo copiar: {e}")
-                        self._crear_excel_inicial(filename)
-                else:
-                    self._crear_excel_inicial(filename)
-            
-            # Leer datos existentes
             if os.path.exists(filename):
                 try:
                     df_existente = pd.read_excel(filename, engine='openpyxl')
                     df_final = pd.concat([df_existente, nuevo_registro], ignore_index=True)
-                except Exception as e:
-                    print(f"⚠️ Error leyendo archivo: {e}")
-                    # Crear backup si hay error
+                except Exception:
                     try:
-                        backup = filename.replace('.xlsx', f'_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
-                        shutil.copy(filename, backup)
-                        print(f"📦 Backup: {backup}")
+                        backup = f"resultados_uniformes_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                        os.rename(filename, backup)
                     except:  # noqa: E722
                         pass
                     df_final = nuevo_registro
             else:
                 df_final = nuevo_registro
             
-            # Guardar
             df_final.to_excel(filename, index=False, engine='openpyxl')
-            
-            # Verificar
-            if os.path.exists(filename):
-                file_size = os.path.getsize(filename)
-                print(f"✅ Guardado en {filename} ({len(df_final)} registros, {file_size} bytes)")
-                return True
-            else:
-                print("❌ El archivo no se creó")
-                return False
+            print(f"Registro guardado en Excel local (Total: {len(df_final)} registros)")
+            return True
                 
-        except PermissionError:
-            print(f"❌ Sin permisos de escritura en {filename}")
-            return False
         except Exception as e:
-            print(f"❌ Error guardando: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error guardando en Excel: {e}")
             return False
     
     def extract_text_from_carnet(self, imagen_path, carnet_box=None):
@@ -328,5 +363,5 @@ class UniformDetector:
             return texto.strip() if texto.strip() else "Texto no detectado"
             
         except Exception as e:
-            print(f"❌ Error en OCR: {e}")
+            print(f"Error en OCR: {e}")
             return "Error en OCR"
