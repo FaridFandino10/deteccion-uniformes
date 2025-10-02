@@ -1,19 +1,30 @@
-# Archivos del sistema
-.DS_Store
-Thumbs.db
-
-# Archivos temporales
-*.log
-*.tmp
-
-# VS Code
-.vscode/
-
-# Node.js (si usas npm)
-node_modules/
-dist/
-
+## Credenciales (NUNCA subir)
 credentials/
 *.json
+service-account.json
+
+# Archivos sensibles
 *.pickle
+config.json
+
+# Archivos Excel con datos
+*.xlsx
+*.xls
+
+# Imágenes
+images/
+results/
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.venv/
 .env
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
