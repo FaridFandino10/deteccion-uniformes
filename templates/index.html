@@ -271,6 +271,28 @@ window.addEventListener('beforeunload', () => {
         stream.getTracks().forEach(track => track.stop());
     }
 });
+
+function esMovil() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+window.onload = function() {
+  const inputFile = document.getElementById('uniforme');
+  const captureBtn = document.getElementById('capture');
+  const video = document.getElementById('video');
+
+  if (esMovil()) {
+    // Solo cámara en móviles
+    if (inputFile) inputFile.style.display = 'none';
+    if (captureBtn) captureBtn.style.display = 'block';
+    if (video) video.style.display = 'block';
+  } else {
+    // Ambas opciones en PC
+    if (inputFile) inputFile.style.display = 'block';
+    if (captureBtn) captureBtn.style.display = 'block';
+    if (video) video.style.display = 'block';
+  }
+};
 </script>
 </body>
 </html>
