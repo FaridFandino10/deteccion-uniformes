@@ -96,7 +96,7 @@ def detect_uniform():
         timestamp = datetime.now()
         print(f"\nGuardando en Excel...")  # noqa: F541
         
-        resultado_guardado = detector.save_to_excel(
+        detector.save_to_excel(
             nombre_tecnico, 
             elementos_encontrados, 
             elementos_faltantes, 
@@ -104,11 +104,12 @@ def detect_uniform():
             timestamp, 
             aliado
         )
-        
-        if resultado_guardado:
-            print("GUARDADO EXITOSO EN EXCEL")
-        else:
-            print("ERROR: NO SE GUARDO EN EXCEL")
+        # Intentar guardar en Google Sheets y mostrar errores en logs
+        try:
+            detector.save_to_google_sheets(nombre_tecnico, elementos_encontrados, elementos_faltantes, porcentaje, timestamp, aliado)
+            print("GUARDADO EXITOSO EN GOOGLE SHEETS")
+        except Exception as e:
+            print(f"ERROR AL GUARDAR EN GOOGLE SHEETS: {e}")
         
         print("="*60 + "\n")
         
