@@ -5,18 +5,98 @@
     <title>Detección de Uniforme</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background: linear-gradient(135deg, #fff 0%, #eee 100%);
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+        .card {
+            border: 2px solid #212121;
+            background-color: #f8f9fa;
+            transition: box-shadow 0.3s;
+            max-width: 500px;
+            margin: auto;
+        }
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(33,33,33,0.2);
+        }
+        .card-body {
+            background-color: #fff;
+        }
+        h2 {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        label {
+            color: #212121;
+        }
+        .btn-primary {
+            background-color: #212121;
+            border-color: #d32f2f;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background-color: #d32f2f;
+            border-color: #212121;
+            color: #fff;
+        }
+        .btn-outline-secondary {
+            border-color: #212121;
+            color: #212121;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #212121;
+            color: #fff;
+        }
+        .form-control:focus {
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 0.2rem rgba(211,47,47,.25);
+        }
+        .alert-danger {
+            background-color: #d32f2f;
+            color: #fff;
+            border-color: #212121;
+        }
+        #preview {
+            display: none;
+            max-height: 200px;
+            margin-top: 10px;
+            border: 2px solid #d32f2f;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 0;
+            }
+            .card {
+                max-width: 100%;
+                padding: 0.5rem;
+                margin: 0;
+            }
+            h2 {
+                font-size: 1.1rem;
+            }
+            .form-control, .btn, .btn-primary, .btn-outline-secondary {
+                font-size: 1rem;
+                padding: 0.7rem 0.5rem;
+            }
+            .card-body {
+                padding: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="container mt-5">
+<div class="container mt-3 mb-3">
     <div class="row justify-content-center">
-        <div class="col-md-7">
+        <div class="col-12 col-sm-10 col-md-8 col-lg-7">
             <div class="card shadow-lg">
                 <div class="card-body">
-                    <h2 class="mb-4 text-center">Subir fotos para detección de uniforme</h2>
+                    <h2 class="mb-4 text-center">REGISTRO DE DOTACIÓN TÉCNICO R1</h2>
                     {% if error %}
                       <div class="alert alert-danger">{{ error }}</div>
                     {% endif %}
-                    <form method="post" action="/detect" enctype="multipart/form-data" class="card p-4 shadow-sm">
+                    <form method="post" action="/detect" enctype="multipart/form-data" class="card p-2 shadow-sm">
                         <div class="mb-3">
                             <label for="aliado" class="form-label">Aliado <span class="text-danger">*</span></label>
                             <select class="form-control" id="aliado" name="aliado" required>
@@ -35,12 +115,12 @@
                         <div class="mb-3">
                             <label for="uniforme" class="form-label">Foto del uniforme <span class="text-danger">*</span></label>
                             <video id="video" width="100%" autoplay playsinline style="border:1px solid #212121;"></video>
-                            <button type="button" class="btn btn-dark mt-2" id="capture">Capturar foto</button>
+                            <button type="button" class="btn btn-dark mt-2 w-100" id="capture">Capturar foto</button>
                             <canvas id="canvas" style="display:none;"></canvas>
                             <input type="file" class="form-control mt-2" name="uniforme" id="uniforme" accept="image/*" required>
                             <div id="foto-lista" class="text-success mt-2" style="display:none;">Foto capturada y lista para enviar.</div>
                             <img id="preview" class="img-thumbnail" alt="Previsualización" style="display:none; max-height:200px;">
-                            <small class="form-text text-muted">Puedes tomar una foto o seleccionar una existente.</small>
+                            <small class="form-text text-muted">Puedes tomar una foto o seleccionar una existente. Si la cámara no está disponible, selecciona la foto manualmente.</small>
                         </div>
                         <button type="submit" class="btn btn-primary w-100" id="btn-detectar">
                             Detectar
@@ -62,9 +142,11 @@ const captureBtn = document.getElementById('capture');
 const preview = document.getElementById('preview');
 const spinner = document.getElementById('spinner');
 
-// Solicitar permiso y acceder a la cámara trasera
+// Solicitar permiso y acceder a la cámara trasera (compatible móviles y PC)
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
     .then((stream) => {
+        video.style.display = 'block';
+        captureBtn.style.display = 'block';
         video.srcObject = stream;
     })
     .catch((error) => {
@@ -106,7 +188,7 @@ uniformeInput.addEventListener('change', function(e) {
 
 // Spinner al enviar formulario
 document.querySelector('form').addEventListener('submit', function() {
-    spinner.style.display = 'inline-block';
+    if (spinner) spinner.style.display = 'inline-block';
 });
 </script>
 </body>
