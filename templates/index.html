@@ -104,32 +104,29 @@
                     <form method="post" action="/detect" enctype="multipart/form-data" class="card p-4 shadow-sm" id="detectionForm">
                         <div class="mb-3">
                             <label for="aliado" class="form-label">Aliado <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="aliado" name="aliado" required maxlength="100">
-                            <small class="form-text text-muted">Nombre de la empresa o aliado.</small>
+                            <select class="form-control" id="aliado" name="aliado" required>
+                                <option value="" disabled selected>Selecciona un aliado</option>
+                                <option value="DOMINIO">DOMINIO</option>
+                                <option value="INMEL">INMEL</option>
+                                <option value="CLARO">CLARO</option>
+                            </select>
+                            <small class="form-text text-muted">Selecciona el aliado correspondiente.</small>
                         </div>
                         <div class="mb-3">
                             <label for="nombre_tecnico" class="form-label">Nombre del técnico <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="nombre_tecnico" name="nombre_tecnico" required maxlength="100">
                             <small class="form-text text-muted">Escribe tu nombre completo.</small>
                         </div>
+                        <!-- Bloque para foto del uniforme -->
                         <div class="mb-3">
                             <label for="uniforme" class="form-label">Foto del uniforme <span class="text-danger">*</span></label>
-                            
-                            <div class="camera-container">
-                                <video id="video" autoplay playsinline></video>
-                                <canvas id="canvas" style="display:none;"></canvas>
-                                <div id="no-camera-msg">No se pudo acceder a la cámara. Usa el selector de archivos.</div>
-                            </div>
-                            
-                            <button type="button" class="btn btn-dark mt-2 w-100" id="capture">📷 Capturar foto</button>
-                            
-                            <div class="text-center my-2">--- o ---</div>
-                            
-                            <input type="file" class="form-control" name="uniforme" id="uniforme" accept="image/*" capture="environment" required>
-                            
-                            <div id="foto-lista" class="alert alert-success mt-2" style="display:none;">✅ Foto capturada y lista para enviar</div>
-                            <img id="preview" class="img-thumbnail" alt="Previsualización">
-                            <small class="form-text text-muted">Toma una foto con la cámara o selecciona una imagen.</small>
+                            <video id="video" width="100%" autoplay style="border:1px solid #212121;"></video>
+                            <button type="button" class="btn btn-dark mt-2" id="capture">Capturar foto</button>
+                            <canvas id="canvas" style="display:none;"></canvas>
+                            <input type="file" class="form-control mt-2" name="uniforme" id="uniforme" accept="image/*" required>
+                            <div id="foto-lista" class="text-success mt-2" style="display:none;">Foto capturada y lista para enviar.</div>
+                            <img id="preview" class="img-thumbnail" alt="Previsualización" style="display:none; max-height:200px;">
+                            <small class="form-text text-muted">Puedes tomar una foto o seleccionar una existente.</small>
                         </div>
                         <button type="submit" class="btn btn-primary w-100" id="btn-detectar">
                             Detectar
